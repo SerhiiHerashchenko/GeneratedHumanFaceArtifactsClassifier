@@ -68,8 +68,9 @@ def train_model_with_metrics(model, train_loader, val_loader, criterion, optimiz
             all_labels = []
 
             for inputs, labels in dataloader:
-                inputs, labels = inputs.to(device), labels.to(device)
-                optimizer.zero_grad()
+                inputs = inputs.to(device, non_blocking=True)
+                labels = labels.to(device, non_blocking=True)
+                optimizer.zero_grad(set_to_none=True)
 
                 with torch.set_grad_enabled(phase == 'train'):
                     outputs = model(inputs)
@@ -82,8 +83,11 @@ def train_model_with_metrics(model, train_loader, val_loader, criterion, optimiz
 
                 running_loss += loss.item() * inputs.size(0)
 
-                all_preds.extend(preds.cpu().numpy())
-                all_labels.extend(labels.cpu().numpy())
+                all_preds.append(preds.detach())
+                all_labels.append(labels.detach())
+
+            all_preds = torch.cat(all_preds).cpu().numpy()
+            all_labels = torch.cat(all_labels).cpu().numpy()
 
             epoch_loss = running_loss / len(dataloader.dataset)
             epoch_f1 = f1_score(all_labels, all_preds, average='micro')
@@ -236,12 +240,26 @@ def random_search(model_builder_fn, train_dataset, val_dataset, param_space, sam
         
         print(f"\n--- Experiment {idx+1}/{num_trials} | LR: {lr}, Batch Size: {batch_size}, Weight Decay: {weight_decay} ---")
 
-        train_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=sampler)
-        val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+        train_loader = DataLoader(
+            train_dataset, 
+            batch_size=batch_size, 
+            sampler=sampler,
+            num_workers=4,
+            pin_memory=True,
+            persistent_workers=True
+        )
+        
+        val_loader = DataLoader(
+            val_dataset, 
+            batch_size=batch_size, 
+            shuffle=False,
+            num_workers=4,
+            pin_memory=True,
+            persistent_workers=True
+        )
 
         model = model_builder_fn().to(device)
         criterion = torch.nn.CrossEntropyLoss()
-        
         optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
 
         epochs_for_search = 3
@@ -249,8 +267,11 @@ def random_search(model_builder_fn, train_dataset, val_dataset, param_space, sam
         for epoch in range(epochs_for_search):
             model.train()
             for inputs, labels in train_loader:
-                inputs, labels = inputs.to(device), labels.to(device)
-                optimizer.zero_grad()
+                inputs = inputs.to(device, non_blocking=True)
+                labels = labels.to(device, non_blocking=True)
+                
+                optimizer.zero_grad(set_to_none=True) 
+                
                 outputs = model(inputs)
                 loss = criterion(outputs, labels)
                 loss.backward()
@@ -260,9 +281,12 @@ def random_search(model_builder_fn, train_dataset, val_dataset, param_space, sam
         all_preds, all_labels = [], []
         with torch.no_grad():
             for inputs, labels in val_loader:
-                inputs, labels = inputs.to(device), labels.to(device)
+                inputs = inputs.to(device, non_blocking=True)
+                labels = labels.to(device, non_blocking=True)
+                
                 outputs = model(inputs)
                 _, preds = torch.max(outputs, 1)
+                
                 all_preds.extend(preds.cpu().numpy())
                 all_labels.extend(labels.cpu().numpy())
 
