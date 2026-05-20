@@ -5,7 +5,7 @@ import seaborn as sns
 import pandas as pd
 import random
 
-from networkx import display
+from IPython.display import display
 from torch import optim
 from torch.utils.data import DataLoader
 from sklearn.metrics import accuracy_score, f1_score, confusion_matrix
@@ -161,10 +161,10 @@ def evaluate_confusion_matrix(model, test_loader, device='cuda'):
 
     print("\n--- DETAILED ANALYSIS ---")
     print(f"Total images checked: {len(all_labels)}")
-    print(f"🟢 True Negatives (TN): {tn} - Real photos that the model correctly identified as real.")
-    print(f"🔴 False Positives (FP): {fp} - WARNING! Real photos that the model incorrectly identified as artifacts (fakes).")
-    print(f"🟡 False Negatives (FN): {fn} - Generated photos (artifacts), which the model missed.")
-    print(f"🟢 True Positives (TP): {tp} - Generated photos that the model successfully detected.")
+    print(f"True Negatives (TN): {tn} - Real photos that the model correctly identified as real.")
+    print(f"False Positives (FP): {fp} - WARNING! Real photos that the model incorrectly identified as artifacts (fakes).")
+    print(f"False Negatives (FN): {fn} - Generated photos (artifacts), which the model missed.")
+    print(f"True Positives (TP): {tp} - Generated photos that the model successfully detected.")
 
     specificity = tn / (tn + fp) if (tn + fp) > 0 else 0
     print(f"\nSpecificity (Ability to not block real photos): {specificity:.4f}")
@@ -213,7 +213,7 @@ def compare_models(models_dict, test_loader, device='cuda'):
     
     df_results = df_results.sort_values(by='Micro F1', ascending=False).reset_index(drop=True)
     
-    print("\n📊 Comparison Results (Test Set):")
+    print("\nComparison Results (Test Set):")
     display(df_results)
     return df_results
 
@@ -299,6 +299,6 @@ def random_search(model_builder_fn, train_dataset, val_dataset, param_space, sam
             best_model_state = model.state_dict()
 
     print("\n=========================================")
-    print(f"🏆 Best parameters: {best_params} (F1: {best_f1:.4f})")
+    print(f"🏆 (peremoga) Best parameters: {best_params} (F1: {best_f1:.4f})")
 
     return best_params
